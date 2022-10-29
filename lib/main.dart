@@ -1,42 +1,63 @@
 import 'package:flutter/material.dart';
-import 'package:myshop/ui/orders/orders_screen.dart';
-import 'package:myshop/ui/products/edit_product_screen.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'ui/screens.dart';
-void main() {
+
+Future<void> main() async {
+  //  (1) Load the .env file
+  await dotenv.load();
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        //  (2) Create and provide AuthManager
+        ChangeNotifierProvider(
+          create: (context) => AuthManager(),
+        ),
+
         ChangeNotifierProvider(
           create: (ctx) => ProductsManager(),
         ),
+
         ChangeNotifierProvider(
           create: (ctx) => CartManager(),
         ),
+
         ChangeNotifierProvider(
           create: (ctx) => OrdersManager(),
         )
+
       ],
-      child: MaterialApp(
-      title: 'My Shop',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        fontFamily: 'Lato',
-        colorScheme: ColorScheme.fromSwatch(
-          primarySwatch: Colors.purple,
-        ).copyWith(
-          secondary: Colors.deepOrange,
-        ),
-      ),
-      home: const ProductsOverviewScreen(),
+      //  (3) Consume the AuthManager instance
+        child: Consumer<AuthManager>(
+          builder: (ctx, authManager, child) {
+            return MaterialApp(
+              title: 'My Shop',
+              debugShowCheckedModeBanner: false,
+              theme: ThemeData(
+                fontFamily: 'Lato',
+                colorScheme: ColorScheme.fromSwatch(
+                  primarySwatch: Colors.purple,
+                ).copyWith(
+                  secondary: Colors.deepOrange,
+                ),
+              ),
+              home: authManager.isAuth
+                ? const ProductsOverviewScreen()
+                : FutureBuilder(
+                  future: authManager.tryAutoLogin(),
+                  builder: (ctx, snapshot) {
+                    return snapshot.connectionState == ConnectionState.waiting
+                      ? const SplashScreen()
+                      : const AuthScreen();
+                    },
+                  ),
       routes: {
           CartScreen.routeName:
             (ctx) => const CartScreen(),
@@ -68,7 +89,9 @@ class MyApp extends StatelessWidget {
               },
             );
           }
-        return null;
+              return null;
+            },
+          );
         },
       ),
     );
