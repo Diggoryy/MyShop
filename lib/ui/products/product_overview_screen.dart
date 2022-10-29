@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:myshop/ui/screens.dart';
 import '../shared/app_drawer.dart';
 import '../cart/cart_screen.dart';
 import 'products_grid.dart';
@@ -15,9 +16,16 @@ class ProductsOverviewScreen extends StatefulWidget {
 }
 
 class _ProductsOverviewScreenState extends State<ProductsOverviewScreen> {
-  var _showOnlyFavorites = false;
+  final _showOnlyFavorites = ValueNotifier<bool>(false);
+  late Future<void> _fetchProducts;
 
   @override
+
+  void initState() {
+    super.initState();
+    _fetchProducts = context.read<ProductsManager>().fetchProducts();
+  }
+
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -28,7 +36,21 @@ class _ProductsOverviewScreenState extends State<ProductsOverviewScreen> {
         ],
       ),
       drawer: const AppDrawer(),
-      body: ProductsGrid(_showOnlyFavorites),
+      body: FutureBuilder(
+          future: _fetchProducts,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.done) {
+              return ValueListenableBuilder<bool>(
+                  valueListenable: _showOnlyFavorites,
+                  builder: (context, onlyFavorites, child) {
+                    return ProductsGrid(onlyFavorites);
+                  });
+            }
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          },
+      ),
     );
   }
 
@@ -48,41 +70,30 @@ Widget buildShoppingCartIcon() {
       );
     },
   );
-    // child: IconButton(
-    //   icon: const Icon(
-    //     Icons.shopping_cart,
-    //   ),
-    //   onPressed: () {
-    //     Navigator.of(context).pushNamed(CartScreen.routeName);
-    //   },
-    // ),
-  // );
 }
 
-Widget buildProductFilterMenu() {
-  return PopupMenuButton(
-    onSelected: (FilterOptions selectedValue) {
-      setState(() {
+  Widget buildProductFilterMenu() {
+    return PopupMenuButton(
+      onSelected: (FilterOptions selectedValue) {
         if (selectedValue == FilterOptions.favorites) {
-          _showOnlyFavorites = true;
+          _showOnlyFavorites.value = true;
         } else {
-          _showOnlyFavorites = false;
+          _showOnlyFavorites.value = false;
         }
-      });
-    },
-    icon: const Icon(
-      Icons.more_vert,
-    ),
-    itemBuilder: (ctx) => [
-      const PopupMenuItem(
-        value:  FilterOptions.favorites,
-        child: Text('Only Favorites'),
+      },
+      icon: const Icon(
+        Icons.more_vert,
       ),
-      const PopupMenuItem(
-        value: FilterOptions.all,
-        child: Text('Show ALL'),
-      ),
-    ],
-  );
- }
+      itemBuilder: (ctx) => [
+        const PopupMenuItem(
+          value: FilterOptions.favorites,
+          child: Text('Only Favorites'),
+        ),
+        const PopupMenuItem(
+          value: FilterOptions.all,
+          child: Text('Show All'),
+        )
+      ],
+    );
+  }
 }
